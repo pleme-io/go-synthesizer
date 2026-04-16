@@ -9,4 +9,5 @@
 /// ANY valid Go can be expressed as compositions of these primitives.
 
 mod node;
+mod synthesizer_core_impl;
 pub use node::*;

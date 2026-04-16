@@ -105,6 +105,7 @@ name = "go-synthesizer"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "synthesizer-core",
 ]
 
 [[package]]
@@ -398,6 +399,11 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "synthesizer-core"
+version = "0.1.0"
+source = "git+https://github.com/pleme-io/synthesizer-core#affb9cc46668f779a4d8a141964bbbe67d8078b7"
 
 [[package]]
 name = "tempfile"

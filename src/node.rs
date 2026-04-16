@@ -159,6 +159,24 @@ pub enum GoExpr {
         op: String,
         right: Box<GoExpr>,
     },
+    /// `expr.(Type)` — type assertion
+    TypeAssert {
+        expr: Box<GoExpr>,
+        assert_type: GoType,
+    },
+    /// `expr...` — variadic unpacking (spread)
+    Spread(Box<GoExpr>),
+    /// `map[K]V{ key: value, ... }` — map literal
+    MapLit {
+        key_type: GoType,
+        val_type: GoType,
+        entries: Vec<(GoExpr, GoExpr)>,
+    },
+    /// `fmt.Errorf("message: %w", err)` — error wrapping
+    Errorf {
+        format: String,
+        args: Vec<GoExpr>,
+    },
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -419,6 +437,26 @@ impl GoExpr {
                 format!("fmt.Sprintf({a})")
             }
             Self::BinOp { left, op, right } => format!("{} {op} {}", left.emit(), right.emit()),
+            Self::TypeAssert { expr, assert_type } => format!("{}.({})", expr.emit(), assert_type.emit()),
+            Self::Spread(expr) => format!("{}...", expr.emit()),
+            Self::MapLit { key_type, val_type, entries } => {
+                if entries.is_empty() {
+                    format!("map[{}]{}{{}}", key_type.emit(), val_type.emit())
+                } else {
+                    let inner = entries.iter()
+                        .map(|(k, v)| format!("\t{}: {},", k.emit(), v.emit()))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    format!("map[{}]{}{{\n{}\n}}", key_type.emit(), val_type.emit(), inner)
+                }
+            }
+            Self::Errorf { format: fmt, args } => {
+                let all: Vec<String> = std::iter::once(GoExpr::Str(fmt.clone()))
+                    .chain(args.iter().cloned())
+                    .map(|a| a.emit())
+                    .collect();
+                format!("fmt.Errorf({})", all.join(", "))
+            }
         }
     }
 }
@@ -802,5 +840,86 @@ mod tests {
         assert!(out.contains("func main()"));
         assert!(out.contains("Hello, World!"));
         assert!(out.ends_with('\n'));
+    }
+
+    // ── New variant tests ────────────────────────────────────
+
+    #[test]
+    fn type_assert() {
+        let expr = GoExpr::TypeAssert {
+            expr: Box::new(GoExpr::Ident("data".into())),
+            assert_type: GoType::Pointer(Box::new(GoType::Named("Config".into()))),
+        };
+        assert_eq!(expr.emit(), "data.(*Config)");
+    }
+
+    #[test]
+    fn spread_operator() {
+        let expr = GoExpr::Spread(Box::new(GoExpr::Ident("diags".into())));
+        assert_eq!(expr.emit(), "diags...");
+    }
+
+    #[test]
+    fn map_literal_empty() {
+        let expr = GoExpr::MapLit {
+            key_type: GoType::Named("string".into()),
+            val_type: GoType::Named("int".into()),
+            entries: vec![],
+        };
+        assert_eq!(expr.emit(), "map[string]int{}");
+    }
+
+    #[test]
+    fn map_literal_with_entries() {
+        let expr = GoExpr::MapLit {
+            key_type: GoType::Named("string".into()),
+            val_type: GoType::Named("string".into()),
+            entries: vec![
+                (GoExpr::Str("key".into()), GoExpr::Str("value".into())),
+            ],
+        };
+        let out = expr.emit();
+        assert!(out.contains("map[string]string{"));
+        assert!(out.contains("\"key\": \"value\""));
+    }
+
+    #[test]
+    fn errorf() {
+        let expr = GoExpr::Errorf {
+            format: "failed to read: %w".into(),
+            args: vec![GoExpr::Ident("err".into())],
+        };
+        assert_eq!(expr.emit(), "fmt.Errorf(\"failed to read: %w\", err)");
+    }
+
+    #[test]
+    fn terraform_diagnostics_pattern() {
+        // Real terraform-plugin-framework pattern:
+        // resp.Diagnostics.Append(diags...)
+        let stmt = GoStmt::Expr(GoExpr::Call {
+            func: Box::new(GoExpr::Selector {
+                expr: Box::new(GoExpr::Selector {
+                    expr: Box::new(GoExpr::Ident("resp".into())),
+                    field: "Diagnostics".into(),
+                }),
+                field: "Append".into(),
+            }),
+            args: vec![GoExpr::Spread(Box::new(GoExpr::Ident("diags".into())))],
+        });
+        let out = stmt.emit(0);
+        assert!(out.contains("resp.Diagnostics.Append(diags...)"));
+    }
+
+    #[test]
+    fn terraform_type_assert_pattern() {
+        // req.ProviderData.(*AkeylessClient)
+        let expr = GoExpr::TypeAssert {
+            expr: Box::new(GoExpr::Selector {
+                expr: Box::new(GoExpr::Ident("req".into())),
+                field: "ProviderData".into(),
+            }),
+            assert_type: GoType::Pointer(Box::new(GoType::Named("AkeylessClient".into()))),
+        };
+        assert_eq!(expr.emit(), "req.ProviderData.(*AkeylessClient)");
     }
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cargo_lock_sha256": "713c5072fe706e50a8172d074eee3874724e781feaca9b36bd6a9c7e7e1d66dc",
+  "cargo_lock_sha256": "fe4aece1c84a1136d2bfc769b85fbeb56087bdf1a8ab19d882c8d6f2f9629d04",
   "target_resolves": {
     "base": {
       "autocfg-1.5.0": {
@@ -1447,7 +1447,7 @@
     }
   },
   "git_nar_sha256": {
-    "synthesizer-core-0.1.0": "sha256-NLcIDQuZcFIimEpDCWAtBLw7SfdjTXtG8gVTxdIKm/A="
+    "synthesizer-core-0.1.0": "sha256-H6inLZ1gcJXWoOw0G7PPGCwsTWx/I9dEdIRBcdQUi5o="
   },
   "flake_metadata": {}
 }

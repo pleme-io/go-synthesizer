@@ -136,6 +136,30 @@ pub struct GoTypeDecl {
 pub enum GoTypeBody {
     Struct(Vec<GoField>),
     Alias(GoType),
+    /// `interface { Method(params) (returns); … }` — a method-set interface.
+    /// Each [`GoIfaceMethod`] is one method line. Added to express the abstract
+    /// `app.Client` API seam (one method per api_op) structurally, rather than
+    /// abusing a struct body with method-shaped field names.
+    Interface(Vec<GoIfaceMethod>),
+}
+
+/// One method signature line in a [`GoTypeBody::Interface`]: a method name plus
+/// its parameter and return types. Parameter names ARE represented so the
+/// rendered interface reads like idiomatic Go (`Get(ctx context.Context, req
+/// GetRequest) (GetResponse, error)`).
+///
+/// Named `GoIfaceMethod` (not `GoMethodSig`) to avoid colliding with the
+/// `node`-layer `GoMethodSig` already re-exported at the crate root.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GoIfaceMethod {
+    /// The method name (e.g. `"GetSecret"`).
+    pub name: String,
+    /// Optional doc comment placed above the method line.
+    pub doc: Option<String>,
+    /// The method parameters (named).
+    pub params: Vec<GoParam>,
+    /// The method return types.
+    pub returns: Vec<GoType>,
 }
 
 /// A struct field. `name: None` means an embedded field (the printer
@@ -311,6 +335,12 @@ pub enum GoStmt {
         range: GoExpr,
         body: GoBlock,
     },
+    /// `var <name> <ty>` — a zero-valued local declaration inside a block.
+    /// Used when a value must be declared before it is addressed (e.g.
+    /// `var in Inputs; ParseInputs(&in)`), where `:=` cannot express the
+    /// declare-then-take-address shape. Distinct from the file-level
+    /// [`GoVarDecl`]; this is the in-body form.
+    Var { name: String, ty: GoType },
 }
 
 // ── Expressions ───────────────────────────────────────────────────────────
@@ -366,6 +396,12 @@ pub enum GoExpr {
         returns: Vec<GoType>,
         body: GoBlock,
     },
+    /// A channel-receive expression: `<-ch`. Used as a statement (e.g.
+    /// `<-ctx.Done()` to block a ctx-aware goroutine until cancellation) or in
+    /// expression position (`v := <-ch`). Added to express the BOREALIS §4
+    /// lifecycle/daemon work-unit shape — a ctx-aware goroutine that blocks on
+    /// `ctx.Done()` — structurally rather than via a `format!()` of raw Go.
+    Receive(Box<GoExpr>),
 }
 
 impl GoExpr {
@@ -618,6 +654,44 @@ impl GoPrinter {
             }
             GoTypeBody::Alias(ty) => {
                 self.print_type(ty);
+            }
+            GoTypeBody::Interface(methods) => {
+                self.write("interface {");
+                self.newline();
+                self.indent += 1;
+                for m in methods {
+                    self.write_doc_indented(&m.doc);
+                    self.write_indent();
+                    self.write(&m.name);
+                    self.write("(");
+                    for (i, p) in m.params.iter().enumerate() {
+                        if i > 0 {
+                            self.write(", ");
+                        }
+                        self.write(&p.name);
+                        self.write(" ");
+                        self.print_type(&p.ty);
+                    }
+                    self.write(")");
+                    if !m.returns.is_empty() {
+                        if m.returns.len() == 1 {
+                            self.write(" ");
+                            self.print_type(&m.returns[0]);
+                        } else {
+                            self.write(" (");
+                            for (i, r) in m.returns.iter().enumerate() {
+                                if i > 0 {
+                                    self.write(", ");
+                                }
+                                self.print_type(r);
+                            }
+                            self.write(")");
+                        }
+                    }
+                    self.newline();
+                }
+                self.indent -= 1;
+                self.write("}");
             }
         }
         self.newline();
@@ -907,6 +981,14 @@ impl GoPrinter {
                 self.print_block(b);
                 self.newline();
             }
+            GoStmt::Var { name, ty } => {
+                self.write_indent();
+                self.write("var ");
+                self.write(name);
+                self.write(" ");
+                self.print_type(ty);
+                self.newline();
+            }
             GoStmt::ForRange { key, value, range, body } => {
                 self.write_indent();
                 self.write("for ");
@@ -1074,6 +1156,10 @@ impl GoPrinter {
                 self.write(" ");
                 self.print_block(body);
             }
+            GoExpr::Receive(ch) => {
+                self.write("<-");
+                self.print_expr(ch);
+            }
             GoExpr::SliceLit { elem_type, elements } => {
                 self.write("[]");
                 self.print_type(elem_type);
@@ -1117,15 +1203,19 @@ fn format_marker_xvalidation(rule: &str, message: &str) -> String {
     format!("+kubebuilder:validation:XValidation:rule=\"{r}\",message=\"{m}\"")
 }
 
-/// Escape a Rust string for embedding inside Go's `"..."` syntax.
-/// Only handles backslashes and double-quotes — the AST never carries
-/// control characters that would need further escaping in our use cases.
+/// Escape a Rust string for embedding inside Go's `"..."` syntax. Handles
+/// backslashes, double-quotes, and the common control characters (newline, tab,
+/// carriage return) so a string literal carrying any of them stays a single
+/// valid Go interpreted-string literal rather than a broken multi-line one.
 fn escape_go_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
             '\\' => out.push_str("\\\\"),
             '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
             other => out.push(other),
         }
     }
@@ -1558,6 +1648,92 @@ mod tests {
         let s = render(&file);
         assert!(s.contains("Run: func(ctx context.Context, _ []string, _ *flag.FlagSet) error {"));
         assert!(s.contains("return nil"));
+    }
+
+    #[test]
+    fn interface_body_renders_method_set() {
+        let iface = GoTypeBody::Interface(vec![GoIfaceMethod {
+            name: "GetSecret".to_string(),
+            doc: Some("GetSecret invokes the GetSecret API operation.".to_string()),
+            params: vec![
+                GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
+                GoParam { name: "req".to_string(), ty: GoType::named("GetSecretRequest") },
+            ],
+            returns: vec![GoType::named("GetSecretResponse"), GoType::named("error")],
+        }]);
+        let mut file = GoFile::new("app");
+        file.decls.push(GoDecl::Type(GoTypeDecl {
+            name: "Client".to_string(),
+            doc: None,
+            markers: vec![],
+            body: iface,
+        }));
+        let s = render(&file);
+        assert!(s.contains("type Client interface {"));
+        assert!(s.contains("// GetSecret invokes the GetSecret API operation."));
+        assert!(s.contains("\tGetSecret(ctx context.Context, req GetSecretRequest) (GetSecretResponse, error)"));
+    }
+
+    #[test]
+    fn escape_newline_in_string_literal() {
+        let mut body = GoBlock::new();
+        body.push(GoStmt::Return(vec![GoExpr::str("line1\nline2\ttab")]));
+        let mut file = GoFile::new("p");
+        file.decls.push(GoDecl::Func(GoFuncDecl {
+            name: "F".to_string(),
+            doc: None,
+            recv: None,
+            params: vec![],
+            returns: vec![GoType::named("string")],
+            body,
+        }));
+        let s = render(&file);
+        assert!(s.contains("return \"line1\\nline2\\ttab\""));
+        // The rendered Go source must NOT contain a raw newline inside the literal.
+        assert!(!s.contains("line1\nline2"));
+    }
+
+    #[test]
+    fn var_stmt_renders_zero_valued_local() {
+        // `var in Inputs` before taking its address for ParseInputs(&in).
+        let mut body = GoBlock::new();
+        body.push(GoStmt::Var { name: "in".to_string(), ty: GoType::named("Inputs") });
+        let mut file = GoFile::new("p");
+        file.decls.push(GoDecl::Func(GoFuncDecl {
+            name: "F".to_string(),
+            doc: None,
+            recv: None,
+            params: vec![],
+            returns: vec![],
+            body,
+        }));
+        let s = render(&file);
+        assert!(s.contains("\tvar in Inputs"));
+    }
+
+    #[test]
+    fn receive_expr_renders_channel_receive() {
+        // `<-ctx.Done()` as a statement inside a goroutine body.
+        let mut body = GoBlock::new();
+        body.push(GoStmt::Expr(GoExpr::Receive(Box::new(GoExpr::call(
+            GoExpr::sel(GoExpr::ident("ctx"), "Done"),
+            vec![],
+        )))));
+        body.push(GoStmt::Return(vec![GoExpr::nil()]));
+        let mut file = GoFile::new("p");
+        file.decls.push(GoDecl::Func(GoFuncDecl {
+            name: "F".to_string(),
+            doc: None,
+            recv: None,
+            params: vec![GoParam {
+                name: "ctx".to_string(),
+                ty: GoType::qualified("context", "Context"),
+            }],
+            returns: vec![GoType::named("error")],
+            body,
+        }));
+        let s = render(&file);
+        assert!(s.contains("\t<-ctx.Done()"));
     }
 
     #[test]

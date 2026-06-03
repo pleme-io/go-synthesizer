@@ -352,6 +352,20 @@ pub enum GoExpr {
     /// terraform-plugin-framework `req.ProviderTypeName + "_<type>"` idiom
     /// structurally rather than via a fake builtin.
     Binary { op: String, lhs: Box<GoExpr>, rhs: Box<GoExpr> },
+    /// A function-literal expression (anonymous closure):
+    /// `func(params) (returns) { body }`. Used as a struct-field value (e.g.
+    /// the cli-go `Command.Run` / `Command.Flags` fields, which take inline
+    /// closures), a callback argument, etc. Parameter names ARE represented
+    /// (unlike `GoType::FuncSignature`, which is a *type*) because a function
+    /// literal binds its parameters. A `_` name renders as a blank identifier.
+    /// Added to express the borealis-cli-example §4 shape — `Run: func(ctx
+    /// context.Context, _ []string, _ *flag.FlagSet) error { … }` —
+    /// structurally rather than via a `format!()` of raw Go.
+    FuncLit {
+        params: Vec<GoParam>,
+        returns: Vec<GoType>,
+        body: GoBlock,
+    },
 }
 
 impl GoExpr {
@@ -1031,6 +1045,35 @@ impl GoPrinter {
                 self.write(" ");
                 self.print_expr(rhs);
             }
+            GoExpr::FuncLit { params, returns, body } => {
+                self.write("func(");
+                for (i, p) in params.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.write(&p.name);
+                    self.write(" ");
+                    self.print_type(&p.ty);
+                }
+                self.write(")");
+                if !returns.is_empty() {
+                    if returns.len() == 1 {
+                        self.write(" ");
+                        self.print_type(&returns[0]);
+                    } else {
+                        self.write(" (");
+                        for (i, r) in returns.iter().enumerate() {
+                            if i > 0 {
+                                self.write(", ");
+                            }
+                            self.print_type(r);
+                        }
+                        self.write(")");
+                    }
+                }
+                self.write(" ");
+                self.print_block(body);
+            }
             GoExpr::SliceLit { elem_type, elements } => {
                 self.write("[]");
                 self.print_type(elem_type);
@@ -1478,6 +1521,43 @@ mod tests {
         }));
         let s = render(&file);
         assert!(s.contains("resp.TypeName = req.ProviderTypeName + \"_thing\""));
+    }
+
+    #[test]
+    fn func_lit_renders_as_closure() {
+        // `Run: func(ctx context.Context, _ []string, _ *flag.FlagSet) error { return nil }`
+        let mut inner = GoBlock::new();
+        inner.push(GoStmt::Return(vec![GoExpr::nil()]));
+        let lit = GoExpr::FuncLit {
+            params: vec![
+                GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
+                GoParam { name: "_".to_string(), ty: GoType::slice(GoType::named("string")) },
+                GoParam {
+                    name: "_".to_string(),
+                    ty: GoType::pointer(GoType::qualified("flag", "FlagSet")),
+                },
+            ],
+            returns: vec![GoType::named("error")],
+            body: inner,
+        };
+        let mut body = GoBlock::new();
+        body.push(GoStmt::Return(vec![GoExpr::Composite {
+            ty: GoType::qualified("cli", "Command"),
+            fields: vec![(Some("Run".to_string()), lit)],
+            addr_of: false,
+        }]));
+        let mut file = GoFile::new("p");
+        file.decls.push(GoDecl::Func(GoFuncDecl {
+            name: "F".to_string(),
+            doc: None,
+            recv: None,
+            params: vec![],
+            returns: vec![GoType::qualified("cli", "Command")],
+            body,
+        }));
+        let s = render(&file);
+        assert!(s.contains("Run: func(ctx context.Context, _ []string, _ *flag.FlagSet) error {"));
+        assert!(s.contains("return nil"));
     }
 
     #[test]

@@ -345,6 +345,13 @@ pub enum GoExpr {
     /// builtins like `make([]T, n)`, `new(T)`, or `reflect.TypeOf(T)`.
     /// Renders as the type alone (no `{}` or other punctuation).
     TypeExpr(GoType),
+    /// `lhs op rhs` — a binary operation, e.g. `a + b`, `x == y`. The operator
+    /// is a raw token (`"+"`, `"=="`, `"&&"`, …); the printer emits
+    /// `lhs <op> rhs` with single spaces and no parenthesisation (callers that
+    /// need grouping nest `Binary` explicitly). Added to express the
+    /// terraform-plugin-framework `req.ProviderTypeName + "_<type>"` idiom
+    /// structurally rather than via a fake builtin.
+    Binary { op: String, lhs: Box<GoExpr>, rhs: Box<GoExpr> },
 }
 
 impl GoExpr {
@@ -366,6 +373,12 @@ impl GoExpr {
     #[must_use]
     pub fn call(fun: GoExpr, args: Vec<GoExpr>) -> Self {
         Self::Call { fun: Box::new(fun), args }
+    }
+
+    /// `lhs op rhs` — build a binary operation (e.g. `+`, `==`).
+    #[must_use]
+    pub fn binary(op: impl Into<String>, lhs: GoExpr, rhs: GoExpr) -> Self {
+        Self::Binary { op: op.into(), lhs: Box::new(lhs), rhs: Box::new(rhs) }
     }
 
     #[must_use]
@@ -1011,6 +1024,13 @@ impl GoPrinter {
             GoExpr::TypeExpr(ty) => {
                 self.print_type(ty);
             }
+            GoExpr::Binary { op, lhs, rhs } => {
+                self.print_expr(lhs);
+                self.write(" ");
+                self.write(op);
+                self.write(" ");
+                self.print_expr(rhs);
+            }
             GoExpr::SliceLit { elem_type, elements } => {
                 self.write("[]");
                 self.print_type(elem_type);
@@ -1434,6 +1454,30 @@ mod tests {
         let mut p = GoPrinter::new();
         p.print_type(&ty);
         assert_eq!(p.finish(), "func(int) (string, error)");
+    }
+
+    #[test]
+    fn binary_expr_renders_with_spaces() {
+        let mut body = GoBlock::new();
+        body.push(GoStmt::Assign {
+            lhs: vec![GoExpr::sel(GoExpr::ident("resp"), "TypeName")],
+            rhs: vec![GoExpr::binary(
+                "+",
+                GoExpr::sel(GoExpr::ident("req"), "ProviderTypeName"),
+                GoExpr::str("_thing"),
+            )],
+        });
+        let mut file = GoFile::new("p");
+        file.decls.push(GoDecl::Func(GoFuncDecl {
+            name: "F".to_string(),
+            doc: None,
+            recv: None,
+            params: vec![],
+            returns: vec![],
+            body,
+        }));
+        let s = render(&file);
+        assert!(s.contains("resp.TypeName = req.ProviderTypeName + \"_thing\""));
     }
 
     #[test]

@@ -49,8 +49,11 @@
 
 pub mod file;
 pub mod gomod;
+pub mod hashkinds;
 pub mod kube;
 pub mod node;
+pub mod tfemit;
+pub mod tfspec;
 
 mod synthesizer_core_impl;
 
@@ -69,6 +72,15 @@ pub use kube::{KubeMarker, ResourceScope, SubresourceKind};
 
 // Layer 3.
 pub use gomod::{GoExclude, GoMod, GoReplace, GoRequire, GoRetract};
+
+// ── New emitters / specs / registries (additive) ───────────────────────────
+//
+// The terraform-plugin-framework emitter (gap E3), its typed TF-resource-spec
+// model, and the builder→required-hash-kinds registry (gap A4). None collide
+// with existing crate-root names, so all are re-exported here.
+pub use hashkinds::{BuilderKind, HashKind, all_builders, required_hashes, requires};
+pub use tfemit::{EmitError, emit_resource};
+pub use tfspec::{TfAttribute, TfResourceSpec, TfType};
 
 // Layer 2 — only the names that do NOT collide with the file layer are
 // re-exported at the crate root. The colliding primitive types remain

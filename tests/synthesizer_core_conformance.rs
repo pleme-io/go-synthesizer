@@ -5,7 +5,11 @@
 //! proof surface: the same laws prove properties of every synthesizer that
 //! conforms.
 
-use go_synthesizer::{
+// Conformance is proven on the primitive "node" layer (`GoNode`), so import
+// every node type from `go_synthesizer::node` — the colliding names
+// (GoExpr/GoField/GoImport/GoParam/GoStmt/GoType) resolve to the richer
+// "file" layer at the crate root after canonicalization.
+use go_synthesizer::node::{
     ChanDir, GoExpr, GoField, GoImport, GoMethodSig, GoNode, GoParam, GoStmt, GoType,
 };
 use synthesizer_core::node::laws;

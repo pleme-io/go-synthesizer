@@ -1,5 +1,9 @@
 use proptest::prelude::*;
-use go_synthesizer::*;
+// These properties exercise the primitive "node" layer (per-node
+// `emit(indent)` model). After the canonicalization that brought the richer
+// "file" layer to the crate root, the colliding primitive names live under
+// `go_synthesizer::node::*` — import them explicitly here.
+use go_synthesizer::node::{GoExpr, GoField, GoNode, GoStmt, GoType, emit_file};
 
 fn arb_go_type() -> impl Strategy<Value = GoType> {
     prop_oneof![

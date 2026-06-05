@@ -65,8 +65,8 @@ mod synthesizer_core_impl;
 // swap.
 pub use file::{
     GoBlock, GoDecl, GoExpr, GoField, GoFile, GoFuncDecl, GoIfaceMethod, GoImport, GoLit, GoParam,
-    GoPrinter, GoRecv, GoStmt, GoStructTag, GoType, GoTypeBody, GoTypeDecl, GoVarDecl, JsonTag,
-    YamlTag, print_file,
+    GoPrinter, GoRecv, GoSelectCase, GoStmt, GoStructTag, GoType, GoTypeBody, GoTypeDecl, GoVarDecl,
+    JsonTag, YamlTag, print_file,
 };
 pub use kube::{KubeMarker, ResourceScope, SubresourceKind};
 

@@ -455,6 +455,12 @@ pub enum GoExpr {
     /// lifecycle/daemon work-unit shape — a ctx-aware goroutine that blocks on
     /// `ctx.Done()` — structurally rather than via a `format!()` of raw Go.
     Receive(Box<GoExpr>),
+    /// An index expression: `recv[index]` — map access (`m[k]`), slice element
+    /// (`pairs[i]`), or array element. Added to express the api_op result-render
+    /// seam — sorting `[]comp.Pair` by key (`pairs[i].K < pairs[j].K`) and
+    /// reading a map value (`resp.Data[k]`) — structurally rather than via a
+    /// `format!()` of raw Go.
+    Index { recv: Box<GoExpr>, index: Box<GoExpr> },
 }
 
 impl GoExpr {
@@ -487,6 +493,12 @@ impl GoExpr {
     #[must_use]
     pub fn sel(recv: GoExpr, sel: impl Into<String>) -> Self {
         Self::Selector { recv: Box::new(recv), sel: sel.into() }
+    }
+
+    /// `recv[index]` — an index expression (map access, slice element).
+    #[must_use]
+    pub fn index(recv: GoExpr, index: GoExpr) -> Self {
+        Self::Index { recv: Box::new(recv), index: Box::new(index) }
     }
 
     /// Build a chained selector: `a.b.c.d` from `["a","b","c","d"]`.
@@ -1276,6 +1288,12 @@ impl GoPrinter {
             GoExpr::Receive(ch) => {
                 self.write("<-");
                 self.print_expr(ch);
+            }
+            GoExpr::Index { recv, index } => {
+                self.print_expr(recv);
+                self.write("[");
+                self.print_expr(index);
+                self.write("]");
             }
             GoExpr::SliceLit { elem_type, elements } => {
                 self.write("[]");

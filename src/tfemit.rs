@@ -21,10 +21,10 @@
 //!
 //! ## Worlds-separate
 //!
-//! The emitter only knows Terraform's framework. It never names akeyless; an
-//! akeyless provider is emitted by passing a `TfResourceSpec` that *describes*
-//! akeyless resources — the akeyless coupling lives in the (private) caller's
-//! spec, never here.
+//! The emitter only knows Terraform's framework. It never names any vendor; a
+//! vendor provider is emitted by passing a `TfResourceSpec` that *describes*
+//! that vendor's resources — the vendor coupling lives in the (private)
+//! caller's spec, never here.
 
 use crate::file::{
     GoBlock, GoDecl, GoExpr, GoField, GoFile, GoFuncDecl, GoImport, GoParam, GoRecv, GoStmt,

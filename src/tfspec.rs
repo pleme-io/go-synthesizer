@@ -21,8 +21,8 @@
 //! ## Worlds-separate
 //!
 //! This model names **Terraform** primitives only. It never names or imports
-//! akeyless — an akeyless-shaped provider is just a `TfResourceSpec` whose
-//! `type_name`/attributes happen to describe akeyless resources, authored by a
+//! any vendor — a vendor provider is just a `TfResourceSpec` whose
+//! `type_name`/attributes describe that vendor's resources, authored by a
 //! private consumer. The public shape stays generic.
 
 /// The terraform-plugin-framework attribute value type for one schema

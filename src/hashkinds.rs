@@ -12,7 +12,7 @@
 //!
 //! The registry is a *typed map* with a single source of truth
 //! ([`required_hashes`]) — adding a builder kind is one match arm, never a
-//! scattered conditional. It is pure data: no IO, no akeyless, fully public.
+//! scattered conditional. It is pure data: no IO, no vendor specifics, fully public.
 
 /// A kind of content hash a builder may need prefetched.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

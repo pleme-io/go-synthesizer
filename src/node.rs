@@ -912,14 +912,14 @@ mod tests {
 
     #[test]
     fn terraform_type_assert_pattern() {
-        // req.ProviderData.(*AkeylessClient)
+        // req.ProviderData.(*VendorClient)
         let expr = GoExpr::TypeAssert {
             expr: Box::new(GoExpr::Selector {
                 expr: Box::new(GoExpr::Ident("req".into())),
                 field: "ProviderData".into(),
             }),
-            assert_type: GoType::Pointer(Box::new(GoType::Named("AkeylessClient".into()))),
+            assert_type: GoType::Pointer(Box::new(GoType::Named("VendorClient".into()))),
         };
-        assert_eq!(expr.emit(), "req.ProviderData.(*AkeylessClient)");
+        assert_eq!(expr.emit(), "req.ProviderData.(*VendorClient)");
     }
 }

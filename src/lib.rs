@@ -6,7 +6,7 @@
 //! at the crate root. This is an intentional intermediate state: the richer
 //! "file" layer was relocated **verbatim** from `iac-forge/src/goast.rs` so
 //! that downstream consumers (notably `crossplane-forge`, which drives
-//! `crossplane-akeyless`) can import every item from `go_synthesizer` with
+//! a downstream vendor provider) can import every item from `go_synthesizer` with
 //! the **same name and signature** they previously imported from
 //! `iac_forge::goast` — making the downstream migration a pure path swap
 //! with **byte-identical** generated output. Full unification of the two

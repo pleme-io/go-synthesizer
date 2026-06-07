@@ -1,7 +1,7 @@
 //! Golden byte-equality tests for the relocated "file" layer.
 //!
 //! These lock the **byte-equal contract** that crossplane-forge (and thus
-//! crossplane-akeyless) depends on: the relocated `iac_forge::goast` printer
+//! a downstream vendor provider) depends on: the relocated `iac_forge::goast` printer
 //! must produce output identical to the byte. Each test asserts on a full
 //! literal string — not on substring presence — so any drift in the printer
 //! is caught immediately.

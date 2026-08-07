@@ -33,8 +33,14 @@ fn golden_struct_with_markers_typed_tags_and_optional_field() {
                 doc: Some("Name is required.".to_string()),
                 markers: vec![KubeMarker::Required],
                 tags: vec![
-                    GoStructTag::Json(JsonTag { name: "name".to_string(), ..Default::default() }),
-                    GoStructTag::Yaml(YamlTag { name: "name".to_string(), ..Default::default() }),
+                    GoStructTag::Json(JsonTag {
+                        name: "name".to_string(),
+                        ..Default::default()
+                    }),
+                    GoStructTag::Yaml(YamlTag {
+                        name: "name".to_string(),
+                        ..Default::default()
+                    }),
                 ],
             },
             GoField {
@@ -82,8 +88,14 @@ fn golden_func_with_receiver_and_params() {
             ty: GoType::pointer(GoType::named("external")),
         }),
         params: vec![
-            GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
-            GoParam { name: "mg".to_string(), ty: GoType::qualified("resource", "Managed") },
+            GoParam {
+                name: "ctx".to_string(),
+                ty: GoType::qualified("context", "Context"),
+            },
+            GoParam {
+                name: "mg".to_string(),
+                ty: GoType::qualified("resource", "Managed"),
+            },
         ],
         returns: vec![GoType::named("error")],
         body,
@@ -110,10 +122,7 @@ fn golden_var_decl() {
     file.decls.push(GoDecl::Var(GoVarDecl {
         name: "SchemeBuilder".to_string(),
         ty: None,
-        value: Some(GoExpr::call(
-            GoExpr::path(&["scheme", "Builder"]),
-            vec![],
-        )),
+        value: Some(GoExpr::call(GoExpr::path(&["scheme", "Builder"]), vec![])),
         doc: Some("SchemeBuilder registers types.".to_string()),
         block_id: None,
     }));
@@ -145,7 +154,10 @@ fn golden_whole_file_grouped_sorted_imports() {
     // Deliberately out of order to prove the printer sorts + groups.
     f.imports.push(GoImport::plain("github.com/example/zeta"));
     f.imports.push(GoImport::plain("fmt"));
-    f.imports.push(GoImport::aliased("xpv1", "github.com/crossplane/crossplane-runtime/apis/common/v1"));
+    f.imports.push(GoImport::aliased(
+        "xpv1",
+        "github.com/crossplane/crossplane-runtime/apis/common/v1",
+    ));
     f.imports.push(GoImport::plain("context"));
 
     let expected = format!(

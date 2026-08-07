@@ -28,12 +28,20 @@ pub struct GoRequire {
 impl GoRequire {
     #[must_use]
     pub fn new(path: impl Into<String>, version: impl Into<String>) -> Self {
-        Self { path: path.into(), version: version.into(), indirect: false }
+        Self {
+            path: path.into(),
+            version: version.into(),
+            indirect: false,
+        }
     }
 
     #[must_use]
     pub fn indirect(path: impl Into<String>, version: impl Into<String>) -> Self {
-        Self { path: path.into(), version: version.into(), indirect: true }
+        Self {
+            path: path.into(),
+            version: version.into(),
+            indirect: true,
+        }
     }
 }
 
@@ -219,8 +227,10 @@ mod tests {
     #[test]
     fn require_block_is_sorted_and_indirect_marked() {
         let mut m = GoMod::new("example.com/m", "1.22");
-        m.require.push(GoRequire::indirect("github.com/z/last", "v1.0.0"));
-        m.require.push(GoRequire::new("github.com/a/first", "v2.3.4"));
+        m.require
+            .push(GoRequire::indirect("github.com/z/last", "v1.0.0"));
+        m.require
+            .push(GoRequire::new("github.com/a/first", "v2.3.4"));
         let s = m.print();
         let expected = "module example.com/m\n\
             \n\
@@ -272,8 +282,14 @@ mod tests {
     #[test]
     fn exclude_block_sorted() {
         let mut m = GoMod::new("m", "1.22");
-        m.exclude.push(GoExclude { path: "z/mod".into(), version: "v1.0.0".into() });
-        m.exclude.push(GoExclude { path: "a/mod".into(), version: "v1.0.0".into() });
+        m.exclude.push(GoExclude {
+            path: "z/mod".into(),
+            version: "v1.0.0".into(),
+        });
+        m.exclude.push(GoExclude {
+            path: "a/mod".into(),
+            version: "v1.0.0".into(),
+        });
         let s = m.print();
         assert!(s.contains("exclude (\n"));
         let a = s.find("a/mod").unwrap();
@@ -303,8 +319,12 @@ mod tests {
     #[test]
     fn full_go_mod_byte_equal() {
         let mut m = GoMod::new("github.com/pleme-io/full", "1.22");
-        m.require.push(GoRequire::new("github.com/crossplane/crossplane-runtime", "v1.15.1"));
-        m.require.push(GoRequire::indirect("github.com/pkg/errors", "v0.9.1"));
+        m.require.push(GoRequire::new(
+            "github.com/crossplane/crossplane-runtime",
+            "v1.15.1",
+        ));
+        m.require
+            .push(GoRequire::indirect("github.com/pkg/errors", "v0.9.1"));
         let s = m.print();
         let expected = "module github.com/pleme-io/full\n\
             \n\

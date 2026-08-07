@@ -117,11 +117,7 @@ pub struct TfAttribute {
 impl TfAttribute {
     /// A required, plain attribute of the given type.
     #[must_use]
-    pub fn required(
-        name: impl Into<String>,
-        go_field: impl Into<String>,
-        ty: TfType,
-    ) -> Self {
+    pub fn required(name: impl Into<String>, go_field: impl Into<String>, ty: TfType) -> Self {
         Self {
             name: name.into(),
             go_field: go_field.into(),
@@ -136,11 +132,7 @@ impl TfAttribute {
 
     /// An optional, plain attribute of the given type.
     #[must_use]
-    pub fn optional(
-        name: impl Into<String>,
-        go_field: impl Into<String>,
-        ty: TfType,
-    ) -> Self {
+    pub fn optional(name: impl Into<String>, go_field: impl Into<String>, ty: TfType) -> Self {
         Self {
             name: name.into(),
             go_field: go_field.into(),
@@ -155,11 +147,7 @@ impl TfAttribute {
 
     /// A computed-only attribute (provider-set, read-only — e.g. an `id`).
     #[must_use]
-    pub fn computed(
-        name: impl Into<String>,
-        go_field: impl Into<String>,
-        ty: TfType,
-    ) -> Self {
+    pub fn computed(name: impl Into<String>, go_field: impl Into<String>, ty: TfType) -> Self {
         Self {
             name: name.into(),
             go_field: go_field.into(),
@@ -354,7 +342,10 @@ mod tests {
         attr.optional = true;
         let s = TfResourceSpec::new("provider", "p", "t", "T").with_attribute(attr);
         let errs = s.validate();
-        assert!(errs.iter().any(|e| e.contains("both required and optional")));
+        assert!(
+            errs.iter()
+                .any(|e| e.contains("both required and optional"))
+        );
     }
 
     #[test]

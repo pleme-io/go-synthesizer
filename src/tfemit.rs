@@ -70,8 +70,7 @@ pub fn emit_resource(spec: &TfResourceSpec) -> Result<GoFile, EmitError> {
     let mut file = GoFile::new(&spec.package);
     file.doc = Some(format!(
         "Package {} implements the {} Terraform provider resources.",
-        spec.package,
-        spec.provider
+        spec.package, spec.provider
     ));
     file.imports = vec![
         GoImport::plain("context"),
@@ -204,7 +203,10 @@ fn metadata_method(spec: &TfResourceSpec) -> GoFuncDecl {
             ty: GoType::pointer(GoType::named(spec.resource_struct())),
         }),
         params: vec![
-            GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
+            GoParam {
+                name: "ctx".to_string(),
+                ty: GoType::qualified("context", "Context"),
+            },
             GoParam {
                 name: "req".to_string(),
                 ty: GoType::qualified("resource", "MetadataRequest"),
@@ -251,11 +253,10 @@ fn schema_method(spec: &TfResourceSpec) -> GoFuncDecl {
                     GoExpr::str(desc.clone()),
                 ));
             }
-            let (pkg, name) = a
-                .ty
-                .schema_attribute()
-                .split_once('.')
-                .unwrap_or(("schema", a.ty.schema_attribute()));
+            let (pkg, name) =
+                a.ty.schema_attribute()
+                    .split_once('.')
+                    .unwrap_or(("schema", a.ty.schema_attribute()));
             // Composite-literal field names are emitted raw by the printer
             // (correct for STRUCT field names). For a `map[string]X` literal
             // the key is a quoted string literal, so we wrap the attribute name
@@ -309,7 +310,10 @@ fn schema_method(spec: &TfResourceSpec) -> GoFuncDecl {
             ty: GoType::pointer(GoType::named(spec.resource_struct())),
         }),
         params: vec![
-            GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
+            GoParam {
+                name: "ctx".to_string(),
+                ty: GoType::qualified("context", "Context"),
+            },
             GoParam {
                 name: "req".to_string(),
                 ty: GoType::qualified("resource", "SchemaRequest"),
@@ -351,7 +355,10 @@ fn crud_method(spec: &TfResourceSpec, verb: &str) -> GoFuncDecl {
             ty: GoType::pointer(GoType::named(spec.resource_struct())),
         }),
         params: vec![
-            GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
+            GoParam {
+                name: "ctx".to_string(),
+                ty: GoType::qualified("context", "Context"),
+            },
             GoParam {
                 name: "req".to_string(),
                 ty: GoType::qualified("resource", req_ty),

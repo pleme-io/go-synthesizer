@@ -112,12 +112,18 @@ pub struct GoImport {
 impl GoImport {
     #[must_use]
     pub fn plain(path: impl Into<String>) -> Self {
-        Self { path: path.into(), alias: None }
+        Self {
+            path: path.into(),
+            alias: None,
+        }
     }
 
     #[must_use]
     pub fn aliased(alias: impl Into<String>, path: impl Into<String>) -> Self {
-        Self { path: path.into(), alias: Some(alias.into()) }
+        Self {
+            path: path.into(),
+            alias: Some(alias.into()),
+        }
     }
 
     /// Stdlib paths have no `.` and no `/` (or only standard module
@@ -200,7 +206,10 @@ pub enum GoStructTag {
     /// Free-form key-value tag for cases the structured variants don't
     /// cover (e.g. `validate:"..."`, `protobuf:"..."`). Discouraged when
     /// a structured variant exists.
-    Custom { key: String, value: String },
+    Custom {
+        key: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -287,7 +296,10 @@ impl GoType {
 
     #[must_use]
     pub fn qualified(pkg: impl Into<String>, name: impl Into<String>) -> Self {
-        Self::Qualified { pkg: pkg.into(), name: name.into() }
+        Self::Qualified {
+            pkg: pkg.into(),
+            name: name.into(),
+        }
     }
 
     #[must_use]
@@ -310,7 +322,9 @@ pub struct GoBlock {
 
 impl GoBlock {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn push(&mut self, s: GoStmt) {
         self.stmts.push(s);
@@ -324,9 +338,15 @@ pub enum GoStmt {
     Expr(GoExpr),
     Return(Vec<GoExpr>),
     /// `lhs = rhs` (regular assignment).
-    Assign { lhs: Vec<GoExpr>, rhs: Vec<GoExpr> },
+    Assign {
+        lhs: Vec<GoExpr>,
+        rhs: Vec<GoExpr>,
+    },
     /// `lhs := rhs` (short variable declaration).
-    ShortDecl { names: Vec<String>, values: Vec<GoExpr> },
+    ShortDecl {
+        names: Vec<String>,
+        values: Vec<GoExpr>,
+    },
     /// `if init; cond { body } else { else_body }`. `init` and `else_body`
     /// are optional. `else_body` is itself a Stmt to allow `else if`
     /// chaining (the parser accepts that as `If { else_body: Some(Box<If>)
@@ -359,7 +379,10 @@ pub enum GoStmt {
     /// `var in Inputs; ParseInputs(&in)`), where `:=` cannot express the
     /// declare-then-take-address shape. Distinct from the file-level
     /// [`GoVarDecl`]; this is the in-body form.
-    Var { name: String, ty: GoType },
+    Var {
+        name: String,
+        ty: GoType,
+    },
     /// A C-style `for` loop with **optional** init / cond / post clauses:
     ///
     ///   - all `None` → `for { body }` (the bare infinite loop — the ticker /
@@ -380,7 +403,9 @@ pub enum GoStmt {
     /// Each [`GoSelectCase`] is one `case`/`default` arm. Added to express the
     /// ticker / ctx-aware daemon loop — `select { case <-ctx.Done(): …; case
     /// <-ticker.C: … }` — structurally rather than via a `format!()` of raw Go.
-    Select { cases: Vec<GoSelectCase> },
+    Select {
+        cases: Vec<GoSelectCase>,
+    },
 }
 
 /// One arm of a [`GoStmt::Select`]. `comm` is the communication clause
@@ -404,9 +429,15 @@ pub enum GoExpr {
     Ident(String),
     Lit(GoLit),
     /// `fun(args...)`.
-    Call { fun: Box<GoExpr>, args: Vec<GoExpr> },
+    Call {
+        fun: Box<GoExpr>,
+        args: Vec<GoExpr>,
+    },
     /// `recv.sel`.
-    Selector { recv: Box<GoExpr>, sel: String },
+    Selector {
+        recv: Box<GoExpr>,
+        sel: String,
+    },
     /// `&T{ field: value, ... }` or `T{ ... }` depending on `addr_of`.
     Composite {
         ty: GoType,
@@ -420,10 +451,17 @@ pub enum GoExpr {
     /// `x.(T)` (no ok) or `x.(T), ok` via `with_ok=true`.
     /// When `with_ok=true`, the parent must be a `ShortDecl` with two
     /// names (the second is the bool); the printer enforces this.
-    TypeAssert { x: Box<GoExpr>, ty: GoType, with_ok: bool },
+    TypeAssert {
+        x: Box<GoExpr>,
+        ty: GoType,
+        with_ok: bool,
+    },
     /// `[]T{e1, e2, ...}` — typed slice literal. Use `Composite` for
     /// struct literals; this variant is specifically for slices.
-    SliceLit { elem_type: GoType, elements: Vec<GoExpr> },
+    SliceLit {
+        elem_type: GoType,
+        elements: Vec<GoExpr>,
+    },
     /// A type used in expression position — primarily as an argument to
     /// builtins like `make([]T, n)`, `new(T)`, or `reflect.TypeOf(T)`.
     /// Renders as the type alone (no `{}` or other punctuation).
@@ -434,7 +472,11 @@ pub enum GoExpr {
     /// need grouping nest `Binary` explicitly). Added to express the
     /// terraform-plugin-framework `req.ProviderTypeName + "_<type>"` idiom
     /// structurally rather than via a fake builtin.
-    Binary { op: String, lhs: Box<GoExpr>, rhs: Box<GoExpr> },
+    Binary {
+        op: String,
+        lhs: Box<GoExpr>,
+        rhs: Box<GoExpr>,
+    },
     /// A function-literal expression (anonymous closure):
     /// `func(params) (returns) { body }`. Used as a struct-field value (e.g.
     /// the cli-go `Command.Run` / `Command.Flags` fields, which take inline
@@ -460,7 +502,10 @@ pub enum GoExpr {
     /// seam — sorting `[]comp.Pair` by key (`pairs[i].K < pairs[j].K`) and
     /// reading a map value (`resp.Data[k]`) — structurally rather than via a
     /// `format!()` of raw Go.
-    Index { recv: Box<GoExpr>, index: Box<GoExpr> },
+    Index {
+        recv: Box<GoExpr>,
+        index: Box<GoExpr>,
+    },
 }
 
 impl GoExpr {
@@ -481,24 +526,37 @@ impl GoExpr {
 
     #[must_use]
     pub fn call(fun: GoExpr, args: Vec<GoExpr>) -> Self {
-        Self::Call { fun: Box::new(fun), args }
+        Self::Call {
+            fun: Box::new(fun),
+            args,
+        }
     }
 
     /// `lhs op rhs` — build a binary operation (e.g. `+`, `==`).
     #[must_use]
     pub fn binary(op: impl Into<String>, lhs: GoExpr, rhs: GoExpr) -> Self {
-        Self::Binary { op: op.into(), lhs: Box::new(lhs), rhs: Box::new(rhs) }
+        Self::Binary {
+            op: op.into(),
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
     }
 
     #[must_use]
     pub fn sel(recv: GoExpr, sel: impl Into<String>) -> Self {
-        Self::Selector { recv: Box::new(recv), sel: sel.into() }
+        Self::Selector {
+            recv: Box::new(recv),
+            sel: sel.into(),
+        }
     }
 
     /// `recv[index]` — an index expression (map access, slice element).
     #[must_use]
     pub fn index(recv: GoExpr, index: GoExpr) -> Self {
-        Self::Index { recv: Box::new(recv), index: Box::new(index) }
+        Self::Index {
+            recv: Box::new(recv),
+            index: Box::new(index),
+        }
     }
 
     /// Build a chained selector: `a.b.c.d` from `["a","b","c","d"]`.
@@ -509,7 +567,10 @@ impl GoExpr {
         let mut iter = segments.iter();
         let mut acc = Self::Ident((*iter.next().unwrap()).to_string());
         for s in iter {
-            acc = Self::Selector { recv: Box::new(acc), sel: (*s).to_string() };
+            acc = Self::Selector {
+                recv: Box::new(acc),
+                sel: (*s).to_string(),
+            };
         }
         acc
     }
@@ -542,9 +603,13 @@ pub struct GoPrinter {
 
 impl GoPrinter {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-    pub fn finish(self) -> String { self.out }
+    pub fn finish(self) -> String {
+        self.out
+    }
 
     fn write(&mut self, s: &str) {
         self.out.push_str(s);
@@ -603,11 +668,17 @@ impl GoPrinter {
                     ResourceScope::Namespaced => "Namespaced",
                 };
                 let cats = categories.join(",");
-                self.write(&format!("+kubebuilder:resource:scope={s},categories={{{cats}}}"));
+                self.write(&format!(
+                    "+kubebuilder:resource:scope={s},categories={{{cats}}}"
+                ));
             }
-            KubeMarker::PrintColumn { name, ty, json_path, priority } => {
-                let prio = priority
-                    .map_or_else(String::new, |p| format!(",priority={p}"));
+            KubeMarker::PrintColumn {
+                name,
+                ty,
+                json_path,
+                priority,
+            } => {
+                let prio = priority.map_or_else(String::new, |p| format!(",priority={p}"));
                 self.write(&format!(
                     "+kubebuilder:printcolumn:name=\"{name}\",type=\"{ty}\",JSONPath=\"{json_path}\"{prio}"
                 ));
@@ -1007,7 +1078,12 @@ impl GoPrinter {
                 }
                 self.newline();
             }
-            GoStmt::If { init, cond, body, else_body } => {
+            GoStmt::If {
+                init,
+                cond,
+                body,
+                else_body,
+            } => {
                 self.write_indent();
                 self.write("if ");
                 if let Some(s_init) = init {
@@ -1063,7 +1139,12 @@ impl GoPrinter {
                 self.print_type(ty);
                 self.newline();
             }
-            GoStmt::ForRange { key, value, range, body } => {
+            GoStmt::ForRange {
+                key,
+                value,
+                range,
+                body,
+            } => {
                 self.write_indent();
                 self.write("for ");
                 match (key.as_deref(), value.as_deref()) {
@@ -1093,7 +1174,12 @@ impl GoPrinter {
                 self.print_block(body);
                 self.newline();
             }
-            GoStmt::For { init, cond, post, body } => {
+            GoStmt::For {
+                init,
+                cond,
+                post,
+                body,
+            } => {
                 self.write_indent();
                 self.write("for");
                 // Three shapes:
@@ -1153,7 +1239,12 @@ impl GoPrinter {
 
     fn print_else_if_inline(&mut self, s: &GoStmt) {
         match s {
-            GoStmt::If { init, cond, body, else_body } => {
+            GoStmt::If {
+                init,
+                cond,
+                body,
+                else_body,
+            } => {
                 self.write("if ");
                 if let Some(i) = init {
                     self.print_inline_simple_stmt(i);
@@ -1205,7 +1296,11 @@ impl GoPrinter {
                 self.write(".");
                 self.write(sel);
             }
-            GoExpr::Composite { ty, fields, addr_of } => {
+            GoExpr::Composite {
+                ty,
+                fields,
+                addr_of,
+            } => {
                 if *addr_of {
                     self.write("&");
                 }
@@ -1256,7 +1351,11 @@ impl GoPrinter {
                 self.write(" ");
                 self.print_expr(rhs);
             }
-            GoExpr::FuncLit { params, returns, body } => {
+            GoExpr::FuncLit {
+                params,
+                returns,
+                body,
+            } => {
                 self.write("func(");
                 for (i, p) in params.iter().enumerate() {
                     if i > 0 {
@@ -1295,7 +1394,10 @@ impl GoPrinter {
                 self.print_expr(index);
                 self.write("]");
             }
-            GoExpr::SliceLit { elem_type, elements } => {
+            GoExpr::SliceLit {
+                elem_type,
+                elements,
+            } => {
                 self.write("[]");
                 self.print_type(elem_type);
                 self.write("{");
@@ -1396,7 +1498,10 @@ mod tests {
     #[test]
     fn import_alias_is_emitted() {
         let mut f = GoFile::new("foo");
-        f.imports.push(GoImport::aliased("xpv1", "github.com/crossplane/crossplane-runtime/apis/common/v1"));
+        f.imports.push(GoImport::aliased(
+            "xpv1",
+            "github.com/crossplane/crossplane-runtime/apis/common/v1",
+        ));
         let s = render(&f);
         assert!(s.contains("xpv1 \"github.com/crossplane/crossplane-runtime/apis/common/v1\""));
     }
@@ -1409,7 +1514,10 @@ mod tests {
             ty: GoType::named("string"),
             doc: Some("Name of the resource.".to_string()),
             markers: vec![KubeMarker::Required],
-            tags: vec![GoStructTag::Json(JsonTag { name: "name".to_string(), ..Default::default() })],
+            tags: vec![GoStructTag::Json(JsonTag {
+                name: "name".to_string(),
+                ..Default::default()
+            })],
         };
         f.decls.push(GoDecl::Type(GoTypeDecl {
             name: "Foo".to_string(),
@@ -1432,7 +1540,11 @@ mod tests {
             ty: GoType::qualified("xpv1", "ResourceSpec"),
             doc: None,
             markers: vec![],
-            tags: vec![GoStructTag::Json(JsonTag { name: String::new(), inline: true, omitempty: false })],
+            tags: vec![GoStructTag::Json(JsonTag {
+                name: String::new(),
+                inline: true,
+                omitempty: false,
+            })],
         };
         let mut file = GoFile::new("foo");
         file.decls.push(GoDecl::Type(GoTypeDecl {
@@ -1511,7 +1623,10 @@ mod tests {
             name: "F".to_string(),
             doc: None,
             recv: None,
-            params: vec![GoParam { name: "mg".to_string(), ty: GoType::named("interface{}") }],
+            params: vec![GoParam {
+                name: "mg".to_string(),
+                ty: GoType::named("interface{}"),
+            }],
             returns: vec![],
             body,
         };
@@ -1552,7 +1667,8 @@ mod tests {
     fn package_level_groupname_marker_above_package_decl() {
         let mut f = GoFile::new("v1alpha1");
         f.markers.push(KubeMarker::ObjectGenerate(true));
-        f.markers.push(KubeMarker::GroupName("vendor.crossplane.io".to_string()));
+        f.markers
+            .push(KubeMarker::GroupName("vendor.crossplane.io".to_string()));
         let s = render(&f);
         // Markers come before package
         let pkg_pos = s.find("package v1alpha1").unwrap();
@@ -1588,7 +1704,10 @@ mod tests {
     fn slice_literal_prints_with_typed_element_type() {
         let lit = GoExpr::SliceLit {
             elem_type: GoType::FuncSignature {
-                params: vec![GoType::qualified("ctrl", "Manager"), GoType::qualified("time", "Duration")],
+                params: vec![
+                    GoType::qualified("ctrl", "Manager"),
+                    GoType::qualified("time", "Duration"),
+                ],
                 returns: vec![GoType::named("error")],
             },
             elements: vec![
@@ -1710,7 +1829,10 @@ mod tests {
         }));
         let s = render(&file);
         assert!(s.contains("make([]Foo, n)"));
-        assert!(!s.contains("make([]Foo{}, n)"), "TypeExpr must not emit slice-literal braces");
+        assert!(
+            !s.contains("make([]Foo{}, n)"),
+            "TypeExpr must not emit slice-literal braces"
+        );
     }
 
     #[test]
@@ -1755,8 +1877,14 @@ mod tests {
         inner.push(GoStmt::Return(vec![GoExpr::nil()]));
         let lit = GoExpr::FuncLit {
             params: vec![
-                GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
-                GoParam { name: "_".to_string(), ty: GoType::slice(GoType::named("string")) },
+                GoParam {
+                    name: "ctx".to_string(),
+                    ty: GoType::qualified("context", "Context"),
+                },
+                GoParam {
+                    name: "_".to_string(),
+                    ty: GoType::slice(GoType::named("string")),
+                },
                 GoParam {
                     name: "_".to_string(),
                     ty: GoType::pointer(GoType::qualified("flag", "FlagSet")),
@@ -1791,8 +1919,14 @@ mod tests {
             name: "GetSecret".to_string(),
             doc: Some("GetSecret invokes the GetSecret API operation.".to_string()),
             params: vec![
-                GoParam { name: "ctx".to_string(), ty: GoType::qualified("context", "Context") },
-                GoParam { name: "req".to_string(), ty: GoType::named("GetSecretRequest") },
+                GoParam {
+                    name: "ctx".to_string(),
+                    ty: GoType::qualified("context", "Context"),
+                },
+                GoParam {
+                    name: "req".to_string(),
+                    ty: GoType::named("GetSecretRequest"),
+                },
             ],
             returns: vec![GoType::named("GetSecretResponse"), GoType::named("error")],
         }]);
@@ -1806,7 +1940,9 @@ mod tests {
         let s = render(&file);
         assert!(s.contains("type Client interface {"));
         assert!(s.contains("// GetSecret invokes the GetSecret API operation."));
-        assert!(s.contains("\tGetSecret(ctx context.Context, req GetSecretRequest) (GetSecretResponse, error)"));
+        assert!(s.contains(
+            "\tGetSecret(ctx context.Context, req GetSecretRequest) (GetSecretResponse, error)"
+        ));
     }
 
     #[test]
@@ -1832,7 +1968,10 @@ mod tests {
     fn var_stmt_renders_zero_valued_local() {
         // `var in Inputs` before taking its address for ParseInputs(&in).
         let mut body = GoBlock::new();
-        body.push(GoStmt::Var { name: "in".to_string(), ty: GoType::named("Inputs") });
+        body.push(GoStmt::Var {
+            name: "in".to_string(),
+            ty: GoType::named("Inputs"),
+        });
         let mut file = GoFile::new("p");
         file.decls.push(GoDecl::Func(GoFuncDecl {
             name: "F".to_string(),
@@ -1907,7 +2046,10 @@ mod tests {
             body: block,
         }));
         let s = render(&file);
-        assert!(s.contains("\tfor {\n"), "bare for loop must render `for {{`, got:\n{s}");
+        assert!(
+            s.contains("\tfor {\n"),
+            "bare for loop must render `for {{`, got:\n{s}"
+        );
         // Must NOT accidentally emit the range / clause separators.
         assert!(!s.contains("for ;"));
         assert!(!s.contains("range"));
@@ -1918,7 +2060,11 @@ mod tests {
         // `for i < 10 { ... }`
         let stmt = GoStmt::For {
             init: None,
-            cond: Some(GoExpr::binary("<", GoExpr::ident("i"), GoExpr::Lit(GoLit::Int(10)))),
+            cond: Some(GoExpr::binary(
+                "<",
+                GoExpr::ident("i"),
+                GoExpr::Lit(GoLit::Int(10)),
+            )),
             post: None,
             body: GoBlock::new(),
         };
@@ -1950,7 +2096,11 @@ mod tests {
             cond: Some(GoExpr::binary("<", GoExpr::ident("i"), GoExpr::ident("n"))),
             post: Some(Box::new(GoStmt::Assign {
                 lhs: vec![GoExpr::ident("i")],
-                rhs: vec![GoExpr::binary("+", GoExpr::ident("i"), GoExpr::Lit(GoLit::Int(1)))],
+                rhs: vec![GoExpr::binary(
+                    "+",
+                    GoExpr::ident("i"),
+                    GoExpr::Lit(GoLit::Int(1)),
+                )],
             })),
             body: GoBlock::new(),
         };

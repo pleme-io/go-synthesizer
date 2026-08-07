@@ -124,10 +124,7 @@ pub enum GoExpr {
         args: Vec<GoExpr>,
     },
     /// `expr.field` or `pkg.Func`
-    Selector {
-        expr: Box<GoExpr>,
-        field: String,
-    },
+    Selector { expr: Box<GoExpr>, field: String },
     /// `expr[index]`
     Index {
         expr: Box<GoExpr>,
@@ -149,10 +146,7 @@ pub enum GoExpr {
     /// `*expr`
     Deref(Box<GoExpr>),
     /// `fmt.Sprintf("format", args...)` — format string
-    Sprintf {
-        format: String,
-        args: Vec<GoExpr>,
-    },
+    Sprintf { format: String, args: Vec<GoExpr> },
     /// Binary operator: `left op right`
     BinOp {
         left: Box<GoExpr>,
@@ -173,10 +167,7 @@ pub enum GoExpr {
         entries: Vec<(GoExpr, GoExpr)>,
     },
     /// `fmt.Errorf("message: %w", err)` — error wrapping
-    Errorf {
-        format: String,
-        args: Vec<GoExpr>,
-    },
+    Errorf { format: String, args: Vec<GoExpr> },
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -186,15 +177,9 @@ pub enum GoExpr {
 #[derive(Debug, Clone, PartialEq)]
 pub enum GoStmt {
     /// `name = value`
-    Assign {
-        target: GoExpr,
-        value: GoExpr,
-    },
+    Assign { target: GoExpr, value: GoExpr },
     /// `name := value`
-    ShortAssign {
-        name: String,
-        value: GoExpr,
-    },
+    ShortAssign { name: String, value: GoExpr },
     /// `return expr, ...`
     Return(Vec<GoExpr>),
     /// `if cond { then } else { else }`
@@ -255,10 +240,7 @@ pub enum GoType {
     /// `map[Key]Value`
     Map(Box<GoType>, Box<GoType>),
     /// `chan Type` or `chan<- Type` or `<-chan Type`
-    Chan {
-        dir: ChanDir,
-        elem: Box<GoType>,
-    },
+    Chan { dir: ChanDir, elem: Box<GoType> },
     /// `func(args) returns`
     Func {
         args: Vec<GoType>,
@@ -291,7 +273,10 @@ impl GoNode {
         match self {
             Self::Comment(text) => {
                 if text.contains('\n') {
-                    text.lines().map(|l| format!("{pad}// {l}")).collect::<Vec<_>>().join("\n")
+                    text.lines()
+                        .map(|l| format!("{pad}// {l}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
                 } else {
                     format!("{pad}// {text}")
                 }
@@ -309,7 +294,9 @@ impl GoNode {
                     let mut out = format!("{pad}import (\n");
                     for i in imports {
                         match &i.alias {
-                            Some(a) => out.push_str(&format!("{pad}\t{a} \"{path}\"\n", path = i.path)),
+                            Some(a) => {
+                                out.push_str(&format!("{pad}\t{a} \"{path}\"\n", path = i.path))
+                            }
                             None => out.push_str(&format!("{pad}\t\"{path}\"\n", path = i.path)),
                         }
                     }
@@ -327,7 +314,11 @@ impl GoNode {
                     if let Some(d) = &f.doc {
                         out.push_str(&format!("{pad}\t// {d}\n"));
                     }
-                    let tag = f.tag.as_ref().map(|t| format!(" `{t}`")).unwrap_or_default();
+                    let tag = f
+                        .tag
+                        .as_ref()
+                        .map(|t| format!(" `{t}`"))
+                        .unwrap_or_default();
                     out.push_str(&format!("{pad}\t{} {}{tag}\n", f.name, f.field_type.emit()));
                 }
                 out.push_str(&format!("{pad}}}"));
@@ -340,19 +331,34 @@ impl GoNode {
                 }
                 out.push_str(&format!("{pad}type {name} interface {{\n"));
                 for m in methods {
-                    let args = m.args.iter().map(|a| format!("{} {}", a.name, a.param_type.emit())).collect::<Vec<_>>().join(", ");
+                    let args = m
+                        .args
+                        .iter()
+                        .map(|a| format!("{} {}", a.name, a.param_type.emit()))
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     let rets = emit_go_returns(&m.returns);
                     out.push_str(&format!("{pad}\t{name}({args}){rets}\n", name = m.name));
                 }
                 out.push_str(&format!("{pad}}}"));
                 out
             }
-            Self::Func { name, args, returns, body, doc } => {
+            Self::Func {
+                name,
+                args,
+                returns,
+                body,
+                doc,
+            } => {
                 let mut out = String::new();
                 if let Some(d) = doc {
                     out.push_str(&format!("{pad}// {d}\n"));
                 }
-                let args_str = args.iter().map(|a| format!("{} {}", a.name, a.param_type.emit())).collect::<Vec<_>>().join(", ");
+                let args_str = args
+                    .iter()
+                    .map(|a| format!("{} {}", a.name, a.param_type.emit()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 let rets = emit_go_returns(returns);
                 out.push_str(&format!("{pad}func {name}({args_str}){rets} {{\n"));
                 for s in body {
@@ -362,13 +368,24 @@ impl GoNode {
                 out.push_str(&format!("{pad}}}"));
                 out
             }
-            Self::Method { receiver, name, args, returns, body, doc } => {
+            Self::Method {
+                receiver,
+                name,
+                args,
+                returns,
+                body,
+                doc,
+            } => {
                 let mut out = String::new();
                 if let Some(d) = doc {
                     out.push_str(&format!("{pad}// {d}\n"));
                 }
                 let recv = format!("{} {}", receiver.name, receiver.param_type.emit());
-                let args_str = args.iter().map(|a| format!("{} {}", a.name, a.param_type.emit())).collect::<Vec<_>>().join(", ");
+                let args_str = args
+                    .iter()
+                    .map(|a| format!("{} {}", a.name, a.param_type.emit()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 let rets = emit_go_returns(returns);
                 out.push_str(&format!("{pad}func ({recv}) {name}({args_str}){rets} {{\n"));
                 for s in body {
@@ -378,16 +395,37 @@ impl GoNode {
                 out.push_str(&format!("{pad}}}"));
                 out
             }
-            Self::VarDecl { name, var_type, value } => {
-                let ty = var_type.as_ref().map(|t| format!(" {}", t.emit())).unwrap_or_default();
-                let val = value.as_ref().map(|v| format!(" = {}", v.emit())).unwrap_or_default();
+            Self::VarDecl {
+                name,
+                var_type,
+                value,
+            } => {
+                let ty = var_type
+                    .as_ref()
+                    .map(|t| format!(" {}", t.emit()))
+                    .unwrap_or_default();
+                let val = value
+                    .as_ref()
+                    .map(|v| format!(" = {}", v.emit()))
+                    .unwrap_or_default();
                 format!("{pad}var {name}{ty}{val}")
             }
-            Self::ConstDecl { name, const_type, value } => {
-                let ty = const_type.as_ref().map(|t| format!(" {}", t.emit())).unwrap_or_default();
+            Self::ConstDecl {
+                name,
+                const_type,
+                value,
+            } => {
+                let ty = const_type
+                    .as_ref()
+                    .map(|t| format!(" {}", t.emit()))
+                    .unwrap_or_default();
                 format!("{pad}const {name}{ty} = {}", value.emit())
             }
-            Self::TypeAlias { name, target, is_alias } => {
+            Self::TypeAlias {
+                name,
+                target,
+                is_alias,
+            } => {
                 if *is_alias {
                     format!("{pad}type {name} = {}", target.emit())
                 } else {
@@ -417,7 +455,11 @@ impl GoExpr {
                 if fields.is_empty() {
                     format!("{}{{}}", comp_type.emit())
                 } else {
-                    let f = fields.iter().map(|(k, v)| format!("{k}: {}", v.emit())).collect::<Vec<_>>().join(", ");
+                    let f = fields
+                        .iter()
+                        .map(|(k, v)| format!("{k}: {}", v.emit()))
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     format!("{}{{ {f} }}", comp_type.emit())
                 }
             }
@@ -437,17 +479,29 @@ impl GoExpr {
                 format!("fmt.Sprintf({a})")
             }
             Self::BinOp { left, op, right } => format!("{} {op} {}", left.emit(), right.emit()),
-            Self::TypeAssert { expr, assert_type } => format!("{}.({})", expr.emit(), assert_type.emit()),
+            Self::TypeAssert { expr, assert_type } => {
+                format!("{}.({})", expr.emit(), assert_type.emit())
+            }
             Self::Spread(expr) => format!("{}...", expr.emit()),
-            Self::MapLit { key_type, val_type, entries } => {
+            Self::MapLit {
+                key_type,
+                val_type,
+                entries,
+            } => {
                 if entries.is_empty() {
                     format!("map[{}]{}{{}}", key_type.emit(), val_type.emit())
                 } else {
-                    let inner = entries.iter()
+                    let inner = entries
+                        .iter()
                         .map(|(k, v)| format!("\t{}: {},", k.emit(), v.emit()))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    format!("map[{}]{}{{\n{}\n}}", key_type.emit(), val_type.emit(), inner)
+                    format!(
+                        "map[{}]{}{{\n{}\n}}",
+                        key_type.emit(),
+                        val_type.emit(),
+                        inner
+                    )
                 }
             }
             Self::Errorf { format: fmt, args } => {
@@ -471,37 +525,72 @@ impl GoStmt {
                 if exprs.is_empty() {
                     format!("{pad}return")
                 } else {
-                    let vals = exprs.iter().map(|e| e.emit()).collect::<Vec<_>>().join(", ");
+                    let vals = exprs
+                        .iter()
+                        .map(|e| e.emit())
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     format!("{pad}return {vals}")
                 }
             }
-            Self::If { init, cond, body, else_body } => {
-                let init_str = init.as_ref().map(|s| format!("{}; ", s.emit(0).trim())).unwrap_or_default();
+            Self::If {
+                init,
+                cond,
+                body,
+                else_body,
+            } => {
+                let init_str = init
+                    .as_ref()
+                    .map(|s| format!("{}; ", s.emit(0).trim()))
+                    .unwrap_or_default();
                 let mut out = format!("{pad}if {init_str}{} {{\n", cond.emit());
-                for s in body { out.push_str(&s.emit(indent + 1)); out.push('\n'); }
+                for s in body {
+                    out.push_str(&s.emit(indent + 1));
+                    out.push('\n');
+                }
                 match else_body {
                     Some(eb) => {
                         out.push_str(&format!("{pad}}} else {{\n"));
-                        for s in eb { out.push_str(&s.emit(indent + 1)); out.push('\n'); }
+                        for s in eb {
+                            out.push_str(&s.emit(indent + 1));
+                            out.push('\n');
+                        }
                         out.push_str(&format!("{pad}}}"));
                     }
                     None => out.push_str(&format!("{pad}}}")),
                 }
                 out
             }
-            Self::For { init, cond, post, body } => {
+            Self::For {
+                init,
+                cond,
+                post,
+                body,
+            } => {
                 let parts: Vec<String> = vec![
-                    init.as_ref().map(|s| s.emit(0).trim().to_string()).unwrap_or_default(),
+                    init.as_ref()
+                        .map(|s| s.emit(0).trim().to_string())
+                        .unwrap_or_default(),
                     cond.as_ref().map(|e| e.emit()).unwrap_or_default(),
-                    post.as_ref().map(|s| s.emit(0).trim().to_string()).unwrap_or_default(),
+                    post.as_ref()
+                        .map(|s| s.emit(0).trim().to_string())
+                        .unwrap_or_default(),
                 ];
                 let header = parts.join("; ").trim_end_matches("; ").trim().to_string();
                 let mut out = format!("{pad}for {header} {{\n");
-                for s in body { out.push_str(&s.emit(indent + 1)); out.push('\n'); }
+                for s in body {
+                    out.push_str(&s.emit(indent + 1));
+                    out.push('\n');
+                }
                 out.push_str(&format!("{pad}}}"));
                 out
             }
-            Self::ForRange { key, value, expr, body } => {
+            Self::ForRange {
+                key,
+                value,
+                expr,
+                body,
+            } => {
                 let binding = match (key, value) {
                     (Some(k), Some(v)) => format!("{k}, {v}"),
                     (Some(k), None) => k.clone(),
@@ -509,21 +598,35 @@ impl GoStmt {
                     (None, None) => "_".into(),
                 };
                 let mut out = format!("{pad}for {binding} := range {} {{\n", expr.emit());
-                for s in body { out.push_str(&s.emit(indent + 1)); out.push('\n'); }
+                for s in body {
+                    out.push_str(&s.emit(indent + 1));
+                    out.push('\n');
+                }
                 out.push_str(&format!("{pad}}}"));
                 out
             }
             Self::Switch { expr, cases } => {
-                let header = expr.as_ref().map(|e| format!(" {}", e.emit())).unwrap_or_default();
+                let header = expr
+                    .as_ref()
+                    .map(|e| format!(" {}", e.emit()))
+                    .unwrap_or_default();
                 let mut out = format!("{pad}switch{header} {{\n");
                 for c in cases {
                     if c.exprs.is_empty() {
                         out.push_str(&format!("{pad}default:\n"));
                     } else {
-                        let vals = c.exprs.iter().map(|e| e.emit()).collect::<Vec<_>>().join(", ");
+                        let vals = c
+                            .exprs
+                            .iter()
+                            .map(|e| e.emit())
+                            .collect::<Vec<_>>()
+                            .join(", ");
                         out.push_str(&format!("{pad}case {vals}:\n"));
                     }
-                    for s in &c.body { out.push_str(&s.emit(indent + 1)); out.push('\n'); }
+                    for s in &c.body {
+                        out.push_str(&s.emit(indent + 1));
+                        out.push('\n');
+                    }
                 }
                 out.push_str(&format!("{pad}}}"));
                 out
@@ -554,18 +657,31 @@ impl GoType {
                 format!("func({a}){r}")
             }
             Self::Struct(fields) => {
-                let f = fields.iter().map(|f| format!("{} {}", f.name, f.field_type.emit())).collect::<Vec<_>>().join("; ");
+                let f = fields
+                    .iter()
+                    .map(|f| format!("{} {}", f.name, f.field_type.emit()))
+                    .collect::<Vec<_>>()
+                    .join("; ");
                 format!("struct {{ {f} }}")
             }
             Self::Interface(methods) => {
                 if methods.is_empty() {
                     "interface{}".into()
                 } else {
-                    let m = methods.iter().map(|m| {
-                        let a = m.args.iter().map(|a| a.param_type.emit()).collect::<Vec<_>>().join(", ");
-                        let r = emit_go_returns(&m.returns);
-                        format!("{}({a}){r}", m.name)
-                    }).collect::<Vec<_>>().join("; ");
+                    let m = methods
+                        .iter()
+                        .map(|m| {
+                            let a = m
+                                .args
+                                .iter()
+                                .map(|a| a.param_type.emit())
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            let r = emit_go_returns(&m.returns);
+                            format!("{}({a}){r}", m.name)
+                        })
+                        .collect::<Vec<_>>()
+                        .join("; ");
                     format!("interface {{ {m} }}")
                 }
             }
@@ -580,7 +696,11 @@ fn emit_go_returns(returns: &[GoType]) -> String {
         0 => String::new(),
         1 => format!(" {}", returns[0].emit()),
         _ => {
-            let r = returns.iter().map(|t| t.emit()).collect::<Vec<_>>().join(", ");
+            let r = returns
+                .iter()
+                .map(|t| t.emit())
+                .collect::<Vec<_>>()
+                .join(", ");
             format!(" ({r})")
         }
     }
@@ -592,33 +712,67 @@ fn emit_go_returns(returns: &[GoType]) -> String {
 
 impl GoImport {
     #[must_use]
-    pub fn new(path: &str) -> Self { Self { path: path.into(), alias: None } }
+    pub fn new(path: &str) -> Self {
+        Self {
+            path: path.into(),
+            alias: None,
+        }
+    }
 
     #[must_use]
-    pub fn with_alias(path: &str, alias: &str) -> Self { Self { path: path.into(), alias: Some(alias.into()) } }
+    pub fn with_alias(path: &str, alias: &str) -> Self {
+        Self {
+            path: path.into(),
+            alias: Some(alias.into()),
+        }
+    }
 }
 
 impl GoField {
     #[must_use]
-    pub fn new(name: &str, field_type: GoType) -> Self { Self { name: name.into(), field_type, tag: None, doc: None } }
+    pub fn new(name: &str, field_type: GoType) -> Self {
+        Self {
+            name: name.into(),
+            field_type,
+            tag: None,
+            doc: None,
+        }
+    }
 
     #[must_use]
-    pub fn with_tag(mut self, tag: &str) -> Self { self.tag = Some(tag.into()); self }
+    pub fn with_tag(mut self, tag: &str) -> Self {
+        self.tag = Some(tag.into());
+        self
+    }
 
     #[must_use]
-    pub fn with_doc(mut self, doc: &str) -> Self { self.doc = Some(doc.into()); self }
+    pub fn with_doc(mut self, doc: &str) -> Self {
+        self.doc = Some(doc.into());
+        self
+    }
 }
 
 impl GoParam {
     #[must_use]
-    pub fn new(name: &str, param_type: GoType) -> Self { Self { name: name.into(), param_type } }
+    pub fn new(name: &str, param_type: GoType) -> Self {
+        Self {
+            name: name.into(),
+            param_type,
+        }
+    }
 }
 
 /// Emit a sequence of Go nodes as a complete file.
 #[must_use]
 pub fn emit_file(nodes: &[GoNode]) -> String {
-    let mut out = nodes.iter().map(|n| n.emit(0)).collect::<Vec<_>>().join("\n");
-    if !out.ends_with('\n') { out.push('\n'); }
+    let mut out = nodes
+        .iter()
+        .map(|n| n.emit(0))
+        .collect::<Vec<_>>()
+        .join("\n");
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
     out
 }
 
@@ -677,15 +831,13 @@ mod tests {
             args: vec![],
             returns: vec![],
             doc: None,
-            body: vec![
-                GoStmt::Expr(GoExpr::Call {
-                    func: Box::new(GoExpr::Selector {
-                        expr: Box::new(GoExpr::Ident("fmt".into())),
-                        field: "Println".into(),
-                    }),
-                    args: vec![GoExpr::Str("hello".into())],
+            body: vec![GoStmt::Expr(GoExpr::Call {
+                func: Box::new(GoExpr::Selector {
+                    expr: Box::new(GoExpr::Ident("fmt".into())),
+                    field: "Println".into(),
                 }),
-            ],
+                args: vec![GoExpr::Str("hello".into())],
+            })],
         };
         let out = node.emit(0);
         assert!(out.contains("func main()"));
@@ -695,7 +847,10 @@ mod tests {
     #[test]
     fn method_emits() {
         let node = GoNode::Method {
-            receiver: GoParam::new("c", GoType::Pointer(Box::new(GoType::Named("Config".into())))),
+            receiver: GoParam::new(
+                "c",
+                GoType::Pointer(Box::new(GoType::Named("Config".into()))),
+            ),
             name: "String".into(),
             args: vec![],
             returns: vec![GoType::Named("string".into())],
@@ -740,8 +895,14 @@ mod tests {
             GoType::Named("string".into()),
             GoType::Pointer(Box::new(GoType::Named("Config".into()))),
             GoType::Slice(Box::new(GoType::Named("int".into()))),
-            GoType::Map(Box::new(GoType::Named("string".into())), Box::new(GoType::Named("int".into()))),
-            GoType::Chan { dir: ChanDir::Both, elem: Box::new(GoType::Named("int".into())) },
+            GoType::Map(
+                Box::new(GoType::Named("string".into())),
+                Box::new(GoType::Named("int".into())),
+            ),
+            GoType::Chan {
+                dir: ChanDir::Both,
+                elem: Box::new(GoType::Named("int".into())),
+            },
             GoType::Array(10, Box::new(GoType::Named("byte".into()))),
             GoType::Any,
         ];
@@ -753,7 +914,10 @@ mod tests {
     #[test]
     fn deterministic() {
         let node = GoNode::Func {
-            name: "test".into(), args: vec![], returns: vec![], doc: None,
+            name: "test".into(),
+            args: vec![],
+            returns: vec![],
+            doc: None,
             body: vec![GoStmt::Return(vec![])],
         };
         assert_eq!(node.emit(0), node.emit(0));
@@ -762,10 +926,12 @@ mod tests {
     #[test]
     fn balanced_braces() {
         let node = GoNode::Struct {
-            name: "Nested".into(), doc: None,
-            fields: vec![GoField::new("Inner", GoType::Struct(vec![
-                GoField::new("X", GoType::Named("int".into())),
-            ]))],
+            name: "Nested".into(),
+            doc: None,
+            fields: vec![GoField::new(
+                "Inner",
+                GoType::Struct(vec![GoField::new("X", GoType::Named("int".into()))]),
+            )],
         };
         let out = node.emit(0);
         let opens = out.chars().filter(|c| *c == '{').count();
@@ -782,7 +948,10 @@ mod tests {
     #[test]
     fn tab_indentation() {
         let node = GoNode::Func {
-            name: "f".into(), args: vec![], returns: vec![], doc: None,
+            name: "f".into(),
+            args: vec![],
+            returns: vec![],
+            doc: None,
             body: vec![GoStmt::Return(vec![GoExpr::Int(1)])],
         };
         let out = node.emit(0);
@@ -803,8 +972,14 @@ mod tests {
         let stmt = GoStmt::Switch {
             expr: Some(GoExpr::Ident("x".into())),
             cases: vec![
-                GoCase { exprs: vec![GoExpr::Int(1)], body: vec![GoStmt::Return(vec![GoExpr::Str("one".into())])] },
-                GoCase { exprs: vec![], body: vec![GoStmt::Return(vec![GoExpr::Str("other".into())])] },
+                GoCase {
+                    exprs: vec![GoExpr::Int(1)],
+                    body: vec![GoStmt::Return(vec![GoExpr::Str("one".into())])],
+                },
+                GoCase {
+                    exprs: vec![],
+                    body: vec![GoStmt::Return(vec![GoExpr::Str("other".into())])],
+                },
             ],
         };
         let out = stmt.emit(0);
@@ -874,9 +1049,7 @@ mod tests {
         let expr = GoExpr::MapLit {
             key_type: GoType::Named("string".into()),
             val_type: GoType::Named("string".into()),
-            entries: vec![
-                (GoExpr::Str("key".into()), GoExpr::Str("value".into())),
-            ],
+            entries: vec![(GoExpr::Str("key".into()), GoExpr::Str("value".into()))],
         };
         let out = expr.emit();
         assert!(out.contains("map[string]string{"));

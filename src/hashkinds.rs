@@ -100,7 +100,10 @@ mod tests {
 
     #[test]
     fn go_module_needs_only_vendor() {
-        assert_eq!(required_hashes(BuilderKind::GoModule), vec![HashKind::Vendor]);
+        assert_eq!(
+            required_hashes(BuilderKind::GoModule),
+            vec![HashKind::Vendor]
+        );
         assert!(requires(BuilderKind::GoModule, HashKind::Vendor));
         assert!(!requires(BuilderKind::GoModule, HashKind::Source));
     }

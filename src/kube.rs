@@ -17,12 +17,23 @@
 pub enum KubeMarker {
     Required,
     Optional,
-    XValidationCEL { rule: String, message: String },
+    XValidationCEL {
+        rule: String,
+        message: String,
+    },
     ObjectGenerate(bool),
     ObjectRoot,
     Subresource(SubresourceKind),
-    Resource { scope: ResourceScope, categories: Vec<String> },
-    PrintColumn { name: String, ty: String, json_path: String, priority: Option<u32> },
+    Resource {
+        scope: ResourceScope,
+        categories: Vec<String>,
+    },
+    PrintColumn {
+        name: String,
+        ty: String,
+        json_path: String,
+        priority: Option<u32>,
+    },
     GroupName(String),
     /// Free-form fallback for kubebuilder markers we haven't structured
     /// yet. Discouraged when a structured variant exists; the goal is

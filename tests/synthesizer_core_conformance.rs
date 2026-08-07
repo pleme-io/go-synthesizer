@@ -125,7 +125,10 @@ fn law_determinism_holds_on_func() {
 #[test]
 fn law_determinism_holds_on_method() {
     let n = GoNode::Method {
-        receiver: GoParam::new("c", GoType::Pointer(Box::new(GoType::Named("Config".into())))),
+        receiver: GoParam::new(
+            "c",
+            GoType::Pointer(Box::new(GoType::Named("Config".into()))),
+        ),
         name: "String".into(),
         args: vec![],
         returns: vec![GoType::Named("string".into())],
